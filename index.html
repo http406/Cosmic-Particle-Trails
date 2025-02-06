@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Cosmic Particle Trails</title>
+        <style>
+            body {
+                overflow: hidden;
+                margin: 0;
+                font-family: Arial, sans-serif;
+            }
+            #infoButton {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                font-size: 24px;
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                color: white;
+                user-select: none;
+            }
+            #infoPopup {
+                display: none;
+                position: absolute;
+                top: 40px;
+                left: 20px;
+                background-color: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+                max-width: 300px;
+                user-select: none;
+            }
+            #infoPopup h3 {
+                margin-top: 0;
+            }
+            #infoPopup p {
+                font-size: 14px;
+            }
+            #closePopup {
+                margin-top: 10px;
+                padding: 5px;
+                background-color: #f44336;
+                color: white;
+                border: none;
+                cursor: pointer;
+                border-radius: 5px;
+                user-select: none;
+            }
+            #closePopup:hover {
+                background-color: #d32f2f;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas></canvas>
+        <button id="infoButton">&#9432;</button>
+        <div id="infoPopup">
+            <h3>Instructions</h3>
+            <p>This is an interactive "Cosmic Particle Trails" animation.</p>
+            <p>Drag your mouse or fingers on the screen to create mesmerizing particle explosions.</p>
+            <p>The particles will follow the movement, creating spirals and curves that fade away smoothly.</p>
+            <button id="closePopup">Close</button>
+        </div>
+
+        <script>
+            "use strict";
+            const canvas = document.querySelector('canvas');
+            const c = canvas.getContext('2d');
+
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const mouse = {
+                x: window.innerWidth / 2,
+                y: window.innerHeight / 2,
+                isDown: false
+            };
+
+            window.addEventListener("mousedown", function(event) {
+                if (isPopupOpen) return; // Prevent explosion if popup is open
+                mouse.isDown = true;
+                mouse.x = event.clientX;
+                mouse.y = event.clientY;
+            });
+
+            window.addEventListener("mouseup", function() {
+                mouse.isDown = false;
+            });
+
+            window.addEventListener("mousemove", function(event) {
+                if (isPopupOpen) return; // Prevent explosion if popup is open
+                if (mouse.isDown) {
+                    mouse.x = event.clientX;
+                    mouse.y = event.clientY;
+                }
+            });
+
+            window.addEventListener("resize", function() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            });
+
+            // Touch events for mobile compatibility
+            canvas.addEventListener("touchstart", function(event) {
+                if (isPopupOpen) return; // Prevent explosion if popup is open
+                mouse.isDown = true;
+                mouse.x = event.touches[0].pageX;
+                mouse.y = event.touches[0].pageY;
+            });
+
+            canvas.addEventListener("touchmove", function(event) {
+                event.preventDefault(); // Prevent scrolling
+                if (isPopupOpen) return; // Prevent explosion if popup is open
+                if (mouse.isDown) {
+                    mouse.x = event.touches[0].pageX;
+                    mouse.y = event.touches[0].pageY;
+                }
+            });
+
+            canvas.addEventListener("touchend", function() {
+                mouse.isDown = false;
+            });
+
+            // Particle effect with spiraling motion
+            function Circle(x, y, radius, color, xVelocity, yVelocity) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+                this.velocity = {
+                    x: xVelocity,
+                    y: yVelocity
+                };
+                this.isAlive = true;
+                this.alpha = 1;
+
+                this.update = function() {
+                    this.velocity.x += Math.sin(Math.random()) * 0.1;
+                    this.velocity.y += Math.cos(Math.random()) * 0.1;
+
+                    if (this.x - this.radius > canvas.width || this.x + this.radius < 0 || this.y - this.radius > canvas.height || this.y + this.radius < 0) {
+                        this.isAlive = false;
+                    }
+
+                    this.x += this.velocity.x;
+                    this.y += this.velocity.y;
+                    this.alpha -= 0.02;
+                    this.draw();
+                };
+
+                this.draw = function() {
+                    c.beginPath();
+                    c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                    c.fillStyle = `rgba(${this.color}, ${this.alpha})`;
+                    c.shadowColor = `rgba(${this.color}, 0.6)`;
+                    c.shadowBlur = 10;
+                    c.fill();
+                    c.closePath();
+                };
+            }
+
+            function Explosion(velocity) {
+                this.particles = [];
+                this.particleAmount = 50;
+                this.particleSeparation = (Math.PI * 2) / this.particleAmount;
+
+                this.init = function() {
+                    let distance = this.particleSeparation;
+
+                    for (let i = 0; i < this.particleAmount; i++) {
+                        let radius = Math.random() * 2 + 1;
+                        let color = `${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}`;
+
+                        this.particles.push(new Circle(mouse.x, mouse.y, radius, color, Math.sin(distance) * velocity, Math.cos(distance) * velocity));
+
+                        distance += this.particleSeparation;
+                    }
+                };
+
+                this.init();
+
+                this.update = function() {
+                    for (let i = 0; i < this.particles.length; i++) {
+                        if (this.particles[i].isAlive === false)
+                            this.particles.splice(i, 1);
+
+                        if (this.particles[i] !== undefined)
+                            this.particles[i].update();
+                    }
+                };
+            }
+
+            let timer = 0;
+            let explosions = [];
+
+            function animate() {
+                window.requestAnimationFrame(animate);
+
+                // Space background animation
+                c.fillStyle = 'black';
+                c.fillRect(0, 0, canvas.width, canvas.height);
+                timer += 1;
+                if (timer % 4 === 0) {
+                    explosions.push(new Explosion(4));
+                }
+
+                for (let i = 0; i < explosions.length; i++) {
+                    explosions[i].update();
+                }
+            }
+
+            animate();
+
+            // Info Button Click Handling
+            let isPopupOpen = false;
+            document.getElementById("infoButton").addEventListener("click", function() {
+                isPopupOpen = false;
+                document.getElementById("infoPopup").style.display = "block";
+            });
+
+            // Close Info Popup
+            document.getElementById("closePopup").addEventListener("click", function() {
+                isPopupOpen = false;
+                document.getElementById("infoPopup").style.display = "none";
+            });
+        </script>
+    </body>
+  </html>
+  
